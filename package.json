@@ -1,0 +1,24 @@
+{
+  "name": "llm-settings-translator",
+  "version": "1.3.5",
+  "description": "用 OpenAI 兼容 LLM 自动翻译 Obsidian 插件设置弹窗内的英文文本（支持多语言目标）",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "translate",
+    "llm",
+    "chinese"
+  ],
+  "author": "lindongyan1992",
+  "license": "MIT",
+  "devDependencies": {
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.5"
+  }
+}

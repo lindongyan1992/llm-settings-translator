@@ -1,0 +1,16 @@
+# 个人运行时数据（绝不入库）
+data.json
+cache.json
+
+# 诊断文件（调试模式开启时生成）
+diag*.txt
+
+# Obsidian / 系统杂项
+.obsidian/
+.DS_Store
+Thumbs.db
+
+# 构建产物（npm run build 生成，GitHub Actions 会在打 tag 时自动构建并发布到 Release）
+node_modules/
+/main.js
+*.map
