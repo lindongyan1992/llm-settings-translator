@@ -10,7 +10,8 @@
 - **多语言目标**：默认翻译成简体中文，可在设置中改为任意语言（English / 日本語 / Français / 한국어…），各语言翻译缓存独立、互不串用。
 - **手动触发**：点击左侧功能区的地球图标，或插件设置页内的「翻译测试」按钮可立即重翻。
 - **跨窗口支持**：设置被拖到独立 pop-out 窗口时同样生效。
-- **翻译缓存**：译文持久化到 `cache.json`，相同文本跨会话 / 重启复用，不重复消耗 token。
+- **移动端支持**：iOS / Android 均可使用，自动翻译、翻译缓存持久化、目标语言切换全部生效（`manifest.json` 已声明 `isDesktopOnly: false`）。
+- **翻译缓存**：译文经 Obsidian 跨平台文件接口持久化到 `cache.json`（桌面端与移动端均生效），相同文本跨会话 / 重启复用，不重复消耗 token。
 - **自适应轮询**：空闲时轮询自动降速，减少无谓开销。
 - **token 透明**：设置页底部实时显示本次会话累计 token 消耗（提示词 / 补全 / 合计 / 调用次数）。
 - **任意 OpenAI 兼容 API**：支持本地（Ollama、LM Studio 等）与云端（DeepSeek、OpenAI、Kimi、通义千问、智谱等）服务，填完整 `/chat/completions` 地址即可。
@@ -24,7 +25,7 @@
 - 本地：LM Studio、vLLM 等
 - 云端：DeepSeek、OpenAI、Kimi (Moonshot)、通义千问 (DashScope)、智谱 GLM 等
 
-Obsidian 桌面版基于 Electron，可直接访问云端 API，无需代理。
+Obsidian 桌面版与移动版均可直接访问云端 API，无需代理。
 
 ## 安装
 
@@ -40,9 +41,14 @@ Obsidian 桌面版基于 Electron，可直接访问云端 API，无需代理。
 2. 将它们放入 vault 的 `.obsidian/plugins/llm-settings-translator/` 目录。
 3. 重启 Obsidian，在「已安装插件」中启用「设置弹窗翻译器」。
 
-### 方式三：官方社区库（审核中）
+### 方式三：移动端安装（Android 可手动；iOS 需等社区库）
 
-本插件已提交 Obsidian 官方社区库审核。通过后可在 Obsidian 设置 → 社区插件 → 浏览中直接搜索「设置弹窗翻译器」安装，后续版本更新由 Obsidian 自动完成。
+- **Android**：下载最新 release 中的 `main.js` 和 `manifest.json`，用支持显示隐藏文件的文件管理器放入 vault 的 `.obsidian/plugins/llm-settings-translator/` 目录，重启 App 后在「已安装插件」中启用。
+- **iOS**：系统 Files 应用无法访问 `.obsidian` 隐藏目录，需等待官方社区库审核通过后，在 App 内直接搜索「设置弹窗翻译器」安装。
+
+### 方式四：官方社区库（审核中）
+
+本插件已提交 Obsidian 官方社区库审核。通过后可在 Obsidian 设置 → 社区插件 → 浏览中直接搜索「设置弹窗翻译器」安装（桌面端与移动端均可），后续版本更新由 Obsidian 自动完成。
 
 ## 配置
 

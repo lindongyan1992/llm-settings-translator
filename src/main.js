@@ -160,7 +160,7 @@ class LLMSettingsTranslator extends Plugin {
     // 重载证明：插件一加载就立刻往 diag_status.txt 写版本横幅。只要用户重载/重启成功，
     // 这个文件就会立刻出现并带 v0.3.14，一眼确认新代码是否真的跑起来（不再需要开设置才生成）。
     try {
-      this._logStatus('===== 插件已加载 (onload) v1.1.0 =====');
+      this._logStatus('===== 插件已加载 (onload) v1.4.0 =====');
     } catch (e) { /* 忽略 */ }
 
     this.ribbonIcon = this.addRibbonIcon('globe', '手动触发翻译', () => this.translateOpenModals(true, 5000));
@@ -212,17 +212,17 @@ class LLMSettingsTranslator extends Plugin {
       for (const k in NAME_DICT) { if (Object.prototype.hasOwnProperty.call(NAME_DICT, k)) this._transCache.set(this._ckey(k), NAME_DICT[k]); }
     }
     // 持久化翻译缓存：从 cache.json 载入历史译文，跨会话/重启复用，避免重复消耗 token（最大省 token 项）
+    // 用 vault adapter 跨平台读写（桌面端与移动端均可），替代 require('fs')
     try {
-      const fs = require('fs');
-      const base = this.app.vault.adapter.basePath;
-      const cp = base + '/.obsidian/plugins/llm-settings-translator/cache.json';
-      if (fs.existsSync(cp)) {
-        const arr = JSON.parse(fs.readFileSync(cp, 'utf8'));
+      const adapter = this.app.vault.adapter;
+      const p = this._pluginFilePath('cache.json');
+      if (adapter && typeof adapter.exists === 'function' && await adapter.exists(p)) {
+        const arr = JSON.parse(await adapter.read(p));
         if (Array.isArray(arr)) {
           for (const kv of arr) {
             if (kv && kv.length === 2 && kv[0] && kv[1] && kv[0] !== kv[1]) {
-              // 兼容 v1.0.x 旧格式（无语言前缀，视为中文缓存）：'Settings' -> '中文::Settings'
-              const key = kv[0].indexOf('::') >= 0 ? kv[0] : '中文::' + kv[0];
+              // 兼容 v1.0.x 旧格式（无语言前缀，视为简体中文缓存）：'Settings' -> '简体中文::Settings'
+              const key = kv[0].indexOf('::') >= 0 ? kv[0] : '简体中文::' + kv[0];
               this._transCache.set(key, kv[1]);
             }
           }
@@ -232,7 +232,7 @@ class LLMSettingsTranslator extends Plugin {
     // 模型拒绝集：某英文文本经模型翻译后仍原样返回（模型不愿翻的专有名词/技术词），
     // 记录下来，后续收集时跳过，避免自动轮询每 2 秒把它重新送给慢速本地模型空跑（那些 done=0 的循环）。
     this._refused = new Set();
-    try { this._writeRefused(); } catch (e) { /* 忽略 */ }
+    void this._writeRefused();
     // 看门狗：若翻译锁异常卡死（如模型请求挂起）超过 15 秒，强制释放，避免所有翻译被永久阻断
     this._watchDog = setInterval(() => {
       if (this.translating && this._translateStart && (Date.now() - this._translateStart > 15000)) {
@@ -253,8 +253,8 @@ class LLMSettingsTranslator extends Plugin {
     if (this._watchDog) clearInterval(this._watchDog);
     if (this._guardObs) { try { this._guardObs.disconnect(); } catch (e) {} }
     if (this._guardTimer) clearTimeout(this._guardTimer);
-    // 卸载时把当前缓存落盘，保证下次启动能复用
-    try { this._flushCache(); } catch (e) {}
+    // 卸载时把当前缓存落盘，保证下次启动能复用（异步，内部已捕获异常）
+    void this._flushCache();
   }
 
   // 轮询：快速档（2s）与慢速档（15s）之间自适应切换。仅在真正翻译出新译文时回到快速档，
@@ -293,17 +293,18 @@ class LLMSettingsTranslator extends Plugin {
     if (this._cacheSaveTimer) return;
     this._cacheSaveTimer = setTimeout(() => {
       this._cacheSaveTimer = null;
-      this._flushCache();
+      void this._flushCache();
     }, 3000);
   }
 
-  _flushCache() {
+  // 跨平台落盘：用 vault adapter 写插件目录下的 cache.json（移动端无 Node fs，必须走 adapter）
+  async _flushCache() {
     try {
-      const fs = require('fs');
-      const base = this.app.vault.adapter.basePath;
+      const adapter = this.app.vault.adapter;
+      if (!adapter || typeof adapter.write !== 'function') return;
       let arr = Array.from(this._transCache.entries()).filter((kv) => kv[0] !== kv[1]);
       if (arr.length > 3000) arr = arr.slice(arr.length - 3000); // 体积上限，超出保留最近
-      fs.writeFileSync(base + '/.obsidian/plugins/llm-settings-translator/cache.json', JSON.stringify(arr), 'utf8');
+      await adapter.write(this._pluginFilePath('cache.json'), JSON.stringify(arr));
     } catch (e) { /* 忽略 */ }
   }
 
@@ -311,8 +312,14 @@ class LLMSettingsTranslator extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
 
+  // 插件目录内文件的跨平台相对路径（桌面端与移动端 adapter 均可用，替代 require('fs')，
+  // 让翻译缓存与诊断文件在移动端也能正常读写）
+  _pluginFilePath(file) {
+    return '.obsidian/plugins/llm-settings-translator/' + file;
+  }
+
   // 翻译缓存 / 拒翻词的语言隔离键：英文 "Settings" 在中文目标下译为"设置"、日语下译为"設定"，
-  // 键形如 "中文::Settings" / "日本語::Settings"。切换目标语言后各语言缓存互不串用，旧语言缓存保留。
+  // 键形如 "简体中文::Settings" / "日本語::Settings"。切换目标语言后各语言缓存互不串用，旧语言缓存保留。
   _ckey(t) {
     return normalizeTargetLang(this.settings && this.settings.targetLang) + '::' + t;
   }
@@ -552,14 +559,19 @@ class LLMSettingsTranslator extends Plugin {
 
   // 全程流水账：把「每次自动/手动翻译尝试」的关键结果写入 diag_status.txt，
   // 用于一锤定音定位「自动翻译到底成功没、卡在哪一环」（自动模式失败是静默的，用户看不到任何提示）。
-  _logStatus(line) {
+  async _logStatus(line) {
     try {
       if (!this.settings || !this.settings.debugMode) return; // 调试模式关闭时静默（发布版默认）
-      const fs = require('fs');
-      const base = this.app.vault.adapter.basePath;
-      const file = base + '/.obsidian/plugins/llm-settings-translator/diag_status.txt';
+      const adapter = this.app.vault.adapter;
+      if (!adapter || typeof adapter.append !== 'function') return;
       const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-      fs.appendFileSync(file, '[' + ts + '] ' + line + '\n', 'utf8');
+      const p = this._pluginFilePath('diag_status.txt');
+      try {
+        await adapter.append(p, '[' + ts + '] ' + line + '\n');
+      } catch (e2) {
+        // 文件不存在时 append 可能失败（移动端），回退为写入首行（首次创建）
+        await adapter.write(p, '[' + ts + '] ' + line + '\n');
+      }
     } catch (e) { /* 不影响主流程 */ }
   }
 
@@ -567,14 +579,13 @@ class LLMSettingsTranslator extends Plugin {
   // 每次有新增即按内存 Set 重写整个文件（去重、清晰）。这样用户重载插件、开下设置后，
   // 我（AI）直接读这个文件就能知道界面残留了哪些英文词，无需用户手动辨认；
   // 要强制翻译这些词，只需在 NAME_DICT 加一条对应词条即可。
-  _writeRefused() {
+  async _writeRefused() {
     try {
       if (!this.settings || !this.settings.debugMode) return; // 调试模式关闭时静默（发布版默认）
-      const fs = require('fs');
-      const base = this.app.vault.adapter.basePath;
-      const file = base + '/.obsidian/plugins/llm-settings-translator/diag_refused.txt';
+      const adapter = this.app.vault.adapter;
+      if (!adapter || typeof adapter.write !== 'function') return;
       const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-      let s = '=== 模型拒翻词记录 (v1.1.0) ' + ts + ' ===\n';
+      let s = '=== 模型拒翻词记录 (v1.4.0) ' + ts + ' ===\n';
       s += '以下词模型坚持返回原样英文（且不在 NAME_DICT），属模型能力边界。\n';
       s += '如需强制翻译，告诉 AI 在 NAME_DICT 加一条即可。\n';
       s += '当前共 ' + this._refused.size + ' 项：\n';
@@ -585,7 +596,7 @@ class LLMSettingsTranslator extends Plugin {
         s += (i++) + ': ' + orig + '\n';
       });
       if (this._refused.size === 0) s += '（暂无）\n';
-      fs.writeFileSync(file, s, 'utf8');
+      await adapter.write(this._pluginFilePath('diag_refused.txt'), s);
     } catch (e) { /* 不影响主流程 */ }
   }
 
@@ -660,7 +671,7 @@ class LLMSettingsTranslator extends Plugin {
           } else if (!forced) {
             // 模型原样返回、且非已知词条 → 标记「模型拒绝翻译」（按语言隔离），后续自动轮询不再空跑
             if (this._refused) this._refused.add(this._ckey(srcText));
-            this._writeRefused();
+            void this._writeRefused();
           }
         });
       }
@@ -760,11 +771,11 @@ class LLMSettingsTranslator extends Plugin {
       });
       return { stillEn, reverted, sample };
     };
-    const writeDiag = (label, st, live) => {
+    const writeDiag = async (label, st, live) => {
       try {
         if (!this.settings || !this.settings.debugMode) return; // 调试模式关闭时静默（发布版默认）
-        const fs = require('fs');
-        const base = this.app.vault.adapter.basePath;
+        const adapter = this.app.vault.adapter;
+        if (!adapter || typeof adapter.write !== 'function') return;
         // 裁决行置顶：一眼判定「写回到底落没落地」。同时 console.log，方便用户在 Obsidian
         // 开发者工具（Ctrl+Shift+I → Console）直接看到，不必翻文件。
         const verdict = (live.en === 0)
@@ -778,15 +789,15 @@ class LLMSettingsTranslator extends Plugin {
           '【实时 DOM】collectTranslatableNodes 命中总数 = ' + live.total + '\n' +
           '【实时 DOM】其中仍为英文 = ' + live.en + '\n' +
           '样本(前8):\n' + sampleLines(st.sample) + '\n';
-        fs.writeFileSync(base + '/.obsidian/plugins/llm-settings-translator/diag_verify.txt', txt, 'utf8');
+        await adapter.write(this._pluginFilePath('diag_verify.txt'), txt);
         console.log('[llm-settings-translator] ' + verdict);
       } catch (e) { /* 不影响主流程 */ }
     };
     const imm = readState();
-    writeDiag('写回后立即', imm, liveEnCount());
+    void writeDiag('写回后立即', imm, liveEnCount());
     setTimeout(() => {
       const later = readState();
-      writeDiag('800ms 后', later, liveEnCount());
+      void writeDiag('800ms 后', later, liveEnCount());
     }, 800);
   }
 
@@ -818,13 +829,14 @@ class LLMSettingsTranslator extends Plugin {
     // 诊断：把本次请求文本与模型原始响应写入文件，便于排查「模型未返回不同译文」（仅调试模式）
     try {
       if (this.settings.debugMode) {
-        const fs = require('fs');
-        const base = this.app.vault.adapter.basePath;
-        const enCount = texts.filter((t) => /^[A-Za-z0-9 ,.\-:()/]+$/.test(t.trim())).length;
-        const dbg = '=== 本次发送文本 (共 ' + texts.length + ' 项，其中近似纯英文/数字 ' + enCount + ' 项) ===\n' +
-          texts.slice(0, 40).map((t, i) => i + ': ' + t).join('\n') +
-          '\n=== 模型原始响应 (前 1200 字符) ===\n' + raw.slice(0, 1200) + '\n=== end ===';
-        fs.writeFileSync(base + '/.obsidian/plugins/llm-settings-translator/diag_translate.txt', dbg, 'utf8');
+        const adapter = this.app.vault.adapter;
+        if (adapter && typeof adapter.write === 'function') {
+          const enCount = texts.filter((t) => /^[A-Za-z0-9 ,.\-:()/]+$/.test(t.trim())).length;
+          const dbg = '=== 本次发送文本 (共 ' + texts.length + ' 项，其中近似纯英文/数字 ' + enCount + ' 项) ===\n' +
+            texts.slice(0, 40).map((t, i) => i + ': ' + t).join('\n') +
+            '\n=== 模型原始响应 (前 1200 字符) ===\n' + raw.slice(0, 1200) + '\n=== end ===';
+          await adapter.write(this._pluginFilePath('diag_translate.txt'), dbg);
+        }
       }
     } catch (e) { /* 诊断写入失败不影响翻译 */ }
     raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
@@ -867,7 +879,7 @@ class LLMSettingsTranslator extends Plugin {
   }
 
   // 诊断：把当前页面与设置相关的关键选择器数量、跨窗口 document 信息写入 diag.txt
-  diagnoseDom() {
+  async diagnoseDom() {
     const lines = [];
     lines.push('===== 跨窗口 document 探测（v0.3.1 新增，最关键）=====');
     try {
@@ -962,10 +974,9 @@ class LLMSettingsTranslator extends Plugin {
 
     const txt = lines.join('\n');
     try {
-      const fs = require('fs');
-      const base = this.app.vault.adapter.basePath;
-      const file = base + '/.obsidian/plugins/llm-settings-translator/diag.txt';
-      fs.writeFileSync(file, txt, 'utf8');
+      const adapter = this.app.vault.adapter;
+      if (!adapter || typeof adapter.write !== 'function') throw new Error('adapter 不可用');
+      await adapter.write(this._pluginFilePath('diag.txt'), txt);
       new Notice('诊断已写入 diag.txt');
     } catch (e) {
       new Notice('诊断写入失败: ' + e.message);
@@ -1125,7 +1136,7 @@ class SettingsTab extends PluginSettingTab {
       .setDesc('若一直识别不到待翻译区域，请点击右侧开始诊断按钮，把当前页面关键元素数量写入diag.txt（重点看顶部「跨窗口 document 探测」一节，会报告设置窗口的 document 是否被本插件探测到），便于定位问题。')
       .addButton(btn => btn
         .setButtonText('开始诊断')
-        .onClick(() => this.plugin.diagnoseDom()));
+        .onClick(() => void this.plugin.diagnoseDom()));
 
     const tk = this.plugin._tokens || { prompt: 0, completion: 0, total: 0, calls: 0 };
     new Setting(containerEl)
