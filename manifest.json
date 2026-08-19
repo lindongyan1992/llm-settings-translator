@@ -3,7 +3,7 @@
   "name": "LLM Settings Translator",
   "version": "1.4.1",
   "minAppVersion": "1.4.0",
-  "description": "用 OpenAI 兼容 LLM 自动翻译 Obsidian 插件设置弹窗内的全部文本（标签名、描述、按钮等），支持自定义端点/模型/API Key 与测试连接，不修改任何插件文件。",
+  "description": "用 OpenAI 兼容 LLM 自动翻译插件设置弹窗内的全部文本（标签名、描述、按钮等），支持自定义端点/模型/API Key 与测试连接，不修改任何插件文件。",
   "author": "lindongyan1992",
   "authorUrl": "https://github.com/lindongyan1992",
   "isDesktopOnly": false
