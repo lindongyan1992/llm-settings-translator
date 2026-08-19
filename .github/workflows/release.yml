@@ -15,10 +15,10 @@ jobs:
       attestations: write
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "18.x"
 
@@ -44,5 +44,3 @@ jobs:
             --draft \
             --notes "Release $tag of LLM Settings Translator. Cross-platform settings-modal translator powered by any OpenAI-compatible LLM. See the README for installation and usage." \
             main.js manifest.json
-          echo "--- release created, verifying ---"
-          gh release view "$tag" --json url,draft,assets
