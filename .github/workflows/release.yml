@@ -42,7 +42,7 @@ jobs:
           gh release create "$tag" \
             --title="$tag" \
             --draft \
-            --generate-notes \
+            --notes "Release $tag of LLM Settings Translator. Cross-platform settings-modal translator powered by any OpenAI-compatible LLM. See the README for installation and usage." \
             main.js manifest.json
           echo "--- release created, verifying ---"
           gh release view "$tag" --json url,draft,assets
