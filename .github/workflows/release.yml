@@ -42,4 +42,7 @@ jobs:
           gh release create "$tag" \
             --title="$tag" \
             --draft \
+            --generate-notes \
             main.js manifest.json
+          echo "--- release created, verifying ---"
+          gh release view "$tag" --json url,draft,assets
