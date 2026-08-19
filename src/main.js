@@ -160,7 +160,7 @@ class LLMSettingsTranslator extends Plugin {
     // 重载证明：插件一加载就立刻往 diag_status.txt 写版本横幅。只要用户重载/重启成功，
     // 这个文件就会立刻出现并带 v0.3.14，一眼确认新代码是否真的跑起来（不再需要开设置才生成）。
     try {
-      this._logStatus('===== 插件已加载 (onload) v1.4.2 =====');
+      this._logStatus('===== 插件已加载 (onload) v1.4.3 =====');
     } catch (e) { /* 忽略 */ }
 
     this.ribbonIcon = this.addRibbonIcon('globe', '手动触发翻译', () => this.translateOpenModals(true, 5000));
@@ -585,7 +585,7 @@ class LLMSettingsTranslator extends Plugin {
       const adapter = this.app.vault.adapter;
       if (!adapter || typeof adapter.write !== 'function') return;
       const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-      let s = '=== 模型拒翻词记录 (v1.4.2) ' + ts + ' ===\n';
+      let s = '=== 模型拒翻词记录 (v1.4.3) ' + ts + ' ===\n';
       s += '以下词模型坚持返回原样英文（且不在 NAME_DICT），属模型能力边界。\n';
       s += '如需强制翻译，告诉 AI 在 NAME_DICT 加一条即可。\n';
       s += '当前共 ' + this._refused.size + ' 项：\n';
