@@ -1,4 +1,4 @@
-# 设置弹窗翻译器 (Settings Popup Translator)
+# LLM Settings Translator（设置弹窗翻译器）
 
 用 OpenAI 兼容的 LLM 自动把 Obsidian 设置弹窗（插件设置 / 核心设置）里的英文界面翻译成你指定的语言（默认简体中文，可改为任意语言）。打开设置弹窗后约 2 秒内自动生效，无需点击任何按钮。
 
@@ -33,22 +33,22 @@ Obsidian 桌面版与移动版均可直接访问云端 API，无需代理。
 
 1. 安装社区插件 [BRAT](https://github.com/TfTHacker/obsidian42-brat)（Obsidian 设置 → 社区插件 → 浏览 → 搜索 "BRAT"）。
 2. 在 BRAT 设置中添加本仓库地址：`https://github.com/lindongyan1992/llm-settings-translator`
-3. 启用「设置弹窗翻译器」插件，并在插件设置中配置你的 LLM 端点与模型。
+3. 启用「LLM Settings Translator」插件，并在插件设置中配置你的 LLM 端点与模型。
 
 ### 方式二：手动安装
 
 1. 下载本仓库最新 release 中的 `main.js` 和 `manifest.json`。
 2. 将它们放入 vault 的 `.obsidian/plugins/llm-settings-translator/` 目录。
-3. 重启 Obsidian，在「已安装插件」中启用「设置弹窗翻译器」。
+3. 重启 Obsidian，在「已安装插件」中启用「LLM Settings Translator」。
 
 ### 方式三：移动端安装（Android 可手动；iOS 需等社区库）
 
 - **Android**：下载最新 release 中的 `main.js` 和 `manifest.json`，用支持显示隐藏文件的文件管理器放入 vault 的 `.obsidian/plugins/llm-settings-translator/` 目录，重启 App 后在「已安装插件」中启用。
-- **iOS**：系统 Files 应用无法访问 `.obsidian` 隐藏目录，需等待官方社区库审核通过后，在 App 内直接搜索「设置弹窗翻译器」安装。
+- **iOS**：系统 Files 应用无法访问 `.obsidian` 隐藏目录，需等待官方社区库审核通过后，在 App 内直接搜索「LLM Settings Translator」安装。
 
 ### 方式四：官方社区库（审核中）
 
-本插件已提交 Obsidian 官方社区库审核。通过后可在 Obsidian 设置 → 社区插件 → 浏览中直接搜索「设置弹窗翻译器」安装（桌面端与移动端均可），后续版本更新由 Obsidian 自动完成。
+本插件已提交 Obsidian 官方社区库审核。通过后可在 Obsidian 设置 → 社区插件 → 浏览中直接搜索「LLM Settings Translator」安装（桌面端与移动端均可），后续版本更新由 Obsidian 自动完成。
 
 ## 配置
 

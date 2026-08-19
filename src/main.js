@@ -1,5 +1,5 @@
 /*
-设置弹窗翻译器 (llm-settings-translator)
+LLM Settings Translator (llm-settings-translator)
 用本地 OpenAI 兼容 LLM 自动翻译 Obsidian 插件设置弹窗内的全部文本节点。
 不修改任何插件文件，纯 UI 层替换。
 支持在设置中自定义端点 / 模型 / API Key，并提供「测试连接」。
@@ -160,7 +160,7 @@ class LLMSettingsTranslator extends Plugin {
     // 重载证明：插件一加载就立刻往 diag_status.txt 写版本横幅。只要用户重载/重启成功，
     // 这个文件就会立刻出现并带 v0.3.14，一眼确认新代码是否真的跑起来（不再需要开设置才生成）。
     try {
-      this._logStatus('===== 插件已加载 (onload) v1.4.0 =====');
+      this._logStatus('===== 插件已加载 (onload) v1.4.1 =====');
     } catch (e) { /* 忽略 */ }
 
     this.ribbonIcon = this.addRibbonIcon('globe', '手动触发翻译', () => this.translateOpenModals(true, 5000));
@@ -585,7 +585,7 @@ class LLMSettingsTranslator extends Plugin {
       const adapter = this.app.vault.adapter;
       if (!adapter || typeof adapter.write !== 'function') return;
       const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-      let s = '=== 模型拒翻词记录 (v1.4.0) ' + ts + ' ===\n';
+      let s = '=== 模型拒翻词记录 (v1.4.1) ' + ts + ' ===\n';
       s += '以下词模型坚持返回原样英文（且不在 NAME_DICT），属模型能力边界。\n';
       s += '如需强制翻译，告诉 AI 在 NAME_DICT 加一条即可。\n';
       s += '当前共 ' + this._refused.size + ' 项：\n';
@@ -994,7 +994,7 @@ class SettingsTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h2', { text: '设置弹窗翻译器' });
+    containerEl.createEl('h2', { text: 'LLM Settings Translator' });
 
     // 使用说明卡片（放在最顶部，方便用户一眼看到）
     const help = containerEl.createEl('div', { cls: 'llm-translator-help' });
