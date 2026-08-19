@@ -160,7 +160,7 @@ class LLMSettingsTranslator extends Plugin {
     // 重载证明：插件一加载就立刻往 diag_status.txt 写版本横幅。只要用户重载/重启成功，
     // 这个文件就会立刻出现并带 v0.3.14，一眼确认新代码是否真的跑起来（不再需要开设置才生成）。
     try {
-      this._logStatus('===== 插件已加载 (onload) v1.4.3 =====');
+      this._logStatus('===== 插件已加载 (onload) v1.4.4 =====');
     } catch (e) { /* 忽略 */ }
 
     this.ribbonIcon = this.addRibbonIcon('globe', '手动触发翻译', () => this.translateOpenModals(true, 5000));
@@ -232,6 +232,15 @@ class LLMSettingsTranslator extends Plugin {
     // 模型拒绝集：某英文文本经模型翻译后仍原样返回（模型不愿翻的专有名词/技术词），
     // 记录下来，后续收集时跳过，避免自动轮询每 2 秒把它重新送给慢速本地模型空跑（那些 done=0 的循环）。
     this._refused = new Set();
+    // 持久化拒翻词：从 refused.json 载入历史拒翻键（含语言前缀），重启后直接跳过、不再重复送模型确认
+    try {
+      const rAdapter = this.app.vault.adapter;
+      const rp = this._pluginFilePath('refused.json');
+      if (rAdapter && typeof rAdapter.exists === 'function' && await rAdapter.exists(rp)) {
+        const rArr = JSON.parse(await rAdapter.read(rp));
+        if (Array.isArray(rArr)) for (const k of rArr) { if (typeof k === 'string' && k) this._refused.add(k); }
+      }
+    } catch (e) { /* 载入失败不影响主流程 */ }
     void this._writeRefused();
     // 看门狗：若翻译锁异常卡死（如模型请求挂起）超过 15 秒，强制释放，避免所有翻译被永久阻断
     this._watchDog = setInterval(() => {
@@ -255,6 +264,7 @@ class LLMSettingsTranslator extends Plugin {
     if (this._guardTimer) clearTimeout(this._guardTimer);
     // 卸载时把当前缓存落盘，保证下次启动能复用（异步，内部已捕获异常）
     void this._flushCache();
+    void this._flushRefused();
   }
 
   // 轮询：快速档（2s）与慢速档（15s）之间自适应切换。仅在真正翻译出新译文时回到快速档，
@@ -306,6 +316,23 @@ class LLMSettingsTranslator extends Plugin {
       if (arr.length > 3000) arr = arr.slice(arr.length - 3000); // 体积上限，超出保留最近
       await adapter.write(this._pluginFilePath('cache.json'), JSON.stringify(arr));
     } catch (e) { /* 忽略 */ }
+  }
+
+  // 拒翻词持久化：跨平台写插件目录下的 refused.json（键含语言前缀，与翻译缓存同理跨语言隔离）
+  async _flushRefused() {
+    try {
+      const adapter = this.app.vault.adapter;
+      if (!adapter || typeof adapter.write !== 'function') return;
+      let arr = Array.from(this._refused || []);
+      if (arr.length > 1000) arr = arr.slice(arr.length - 1000); // 体积上限，超出保留最近
+      await adapter.write(this._pluginFilePath('refused.json'), JSON.stringify(arr));
+    } catch (e) { /* 忽略 */ }
+  }
+
+  // 清空拒翻记录：更换端点/模型后调用——新模型可能愿意翻译旧模型拒翻的词，避免被历史记录永久屏蔽
+  resetRefused() {
+    if (this._refused) this._refused.clear();
+    void this._flushRefused();
   }
 
   async loadSettings() {
@@ -407,7 +434,7 @@ class LLMSettingsTranslator extends Plugin {
         this._lastNoRoot = now;
         this._logStatus('translateOpenModals: 未检测到设置界面（根节点=0）');
       }
-      if (verbose) new Notice('未检测到打开的设置界面。请先打开 Obsidian 设置（左侧齿轮或命令面板搜「设置」），保持弹窗打开，再点此按钮 / 地球图标。');
+      if (verbose) new Notice('未检测到打开的设置界面。请先打开 Obsidian 设置（齿轮图标或命令面板搜「设置」），保持弹窗打开，再点此按钮 / 地球图标。');
       return;
     }
     this._logStatus('translateOpenModals: 命中根节点 ' + roots.length + ' 个，开始翻译');
@@ -585,7 +612,7 @@ class LLMSettingsTranslator extends Plugin {
       const adapter = this.app.vault.adapter;
       if (!adapter || typeof adapter.write !== 'function') return;
       const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-      let s = '=== 模型拒翻词记录 (v1.4.3) ' + ts + ' ===\n';
+      let s = '=== 模型拒翻词记录 (v1.4.4) ' + ts + ' ===\n';
       s += '以下词模型坚持返回原样英文（且不在 NAME_DICT），属模型能力边界。\n';
       s += '如需强制翻译，告诉 AI 在 NAME_DICT 加一条即可。\n';
       s += '当前共 ' + this._refused.size + ' 项：\n';
@@ -670,7 +697,10 @@ class LLMSettingsTranslator extends Plugin {
             done++;
           } else if (!forced) {
             // 模型原样返回、且非已知词条 → 标记「模型拒绝翻译」（按语言隔离），后续自动轮询不再空跑
-            if (this._refused) this._refused.add(this._ckey(srcText));
+            if (this._refused) {
+              this._refused.add(this._ckey(srcText));
+              void this._flushRefused(); // 持久化拒翻键，重启后不再重复送模型确认
+            }
             void this._writeRefused();
           }
         });
@@ -1001,12 +1031,12 @@ class SettingsTab extends PluginSettingTab {
     help.setAttribute('style', 'background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 12px 14px; margin: 6px 0 18px; font-size: var(--font-ui-smaller); line-height: 1.65; color: var(--text-muted);');
     help.createEl('div', { text: '使用说明', attr: { style: 'font-weight: 600; color: var(--text-normal); margin-bottom: 6px; font-size: var(--font-ui-small);' } });
     const helpLines = [
-      '• 前提条件：LLM可正常连接，可点击下方测试连接按钮确认在线。',
+      '• 前提条件：LLM可正常连接，可点击测试连接按钮确认在线。',
       '• 自动翻译：打开任意设置弹窗（插件 / 核心设置）后，约 2 秒内英文会自动翻译成中文，无需点击任何按钮。',
-      '• 目标语言：默认翻译成中文，可在下方「目标语言」改为任意语言（English / 日本語 / Français / 한국어…），修改后重新打开设置弹窗生效。',
-      '• 手动触发（可选）：也可点击左侧功能区中的地球图标手动触发翻译。',
-      '• 作用范围：只翻译设置弹窗内的文字，主界面与笔记正文不受影响。',
-      '• 省 token：翻译缓存已持久化（cache.json），相同文本跨会话/重启复用，不再重复消耗；空闲时轮询自动降速至 15 秒。每次翻译的 token 消耗会在翻译提示中显示（本页底部可查看累计）。'
+      '• 目标语言：默认翻译成简体中文，可在「目标语言」改为任意语言，修改后重新打开设置弹窗生效。',
+      '• 手动触发（可选）：也可点击功能区中的地球图标手动触发翻译。',
+      '• 作用范围：只翻译设置页面内的文字，主界面与笔记正文不受影响。',
+      '• 节省策略：翻译缓存与拒翻词均已持久化（cache.json / refused.json），跨会话/重启复用，不再重复消耗；空闲时轮询自动降速至 15 秒。每次翻译的 token 消耗会在翻译提示中显示。'
     ];
     helpLines.forEach((line) => help.createEl('p', { text: line, attr: { style: 'margin: 3px 0;' } }));
 
@@ -1019,6 +1049,7 @@ class SettingsTab extends PluginSettingTab {
         .onChange(async (v) => {
           this.plugin.settings.endpoint = v.trim();
           await this.plugin.saveSettings();
+          this.plugin.resetRefused(); // 端点变更后清空拒翻记录，避免旧记录屏蔽新服务
         }));
 
     const langSetting = new Setting(containerEl)
@@ -1079,6 +1110,7 @@ class SettingsTab extends PluginSettingTab {
         .onChange(async (v) => {
           this.plugin.settings.model = v.trim();
           await this.plugin.saveSettings();
+          this.plugin.resetRefused(); // 模型变更后清空拒翻记录，新模型可能愿意翻旧模型拒翻的词
         }));
 
     new Setting(containerEl)
@@ -1096,7 +1128,7 @@ class SettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('测试连接')
-      .setDesc('使用上方配置发送一条测试请求，验证端点与模型是否可用。')
+      .setDesc('使用当前配置发送一条测试请求，验证端点与模型是否可用。')
       .addButton(btn => btn
         .setButtonText('测试连接')
         .setCta()
@@ -1116,7 +1148,7 @@ class SettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('翻译测试')
-      .setDesc('立即翻译当前页面进行测试，右上角将出现提示语。')
+      .setDesc('立即翻译当前页面进行测试，完成后将出现提示语。')
       .addButton(btn => btn
         .setButtonText('翻译测试')
         .onClick(() => this.plugin.translateOpenModals(true, 5000)));
@@ -1133,7 +1165,7 @@ class SettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('诊断 DOM 结构')
-      .setDesc('若一直识别不到待翻译区域，请点击右侧开始诊断按钮，把当前页面关键元素数量写入diag.txt（重点看顶部「跨窗口 document 探测」一节，会报告设置窗口的 document 是否被本插件探测到），便于定位问题。')
+      .setDesc('若一直识别不到待翻译区域，请点击开始诊断按钮，把当前页面关键元素数量写入diag.txt（重点看顶部「跨窗口 document 探测」一节，会报告设置窗口的 document 是否被本插件探测到），便于定位问题。')
       .addButton(btn => btn
         .setButtonText('开始诊断')
         .onClick(() => void this.plugin.diagnoseDom()));
@@ -1141,7 +1173,7 @@ class SettingsTab extends PluginSettingTab {
     const tk = this.plugin._tokens || { prompt: 0, completion: 0, total: 0, calls: 0 };
     new Setting(containerEl)
       .setName('累计 Token 消耗（本次会话）')
-      .setDesc('提示词 ' + tk.prompt + ' · 补全 ' + tk.completion + ' · 合计 ' + tk.total + ' tokens，模型调用 ' + tk.calls + ' 次。翻译缓存已持久化到 cache.json，重启 Obsidian 后复用、不再重复消耗。重新打开本页或点击右侧刷新统计按键可刷新数据。')
+      .setDesc('合计 ' + tk.total + ' tokens，模型调用 ' + tk.calls + ' 次。翻译缓存已持久化到 cache.json，重启 Obsidian 后复用、不再重复消耗。重新打开本页或点击刷新统计按键可刷新数据。')
       .addButton(btn => btn
         .setButtonText('刷新统计')
         .onClick(() => this.display()));
