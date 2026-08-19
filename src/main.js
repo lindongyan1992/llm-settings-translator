@@ -160,7 +160,7 @@ class LLMSettingsTranslator extends Plugin {
     // 重载证明：插件一加载就立刻往 diag_status.txt 写版本横幅。只要用户重载/重启成功，
     // 这个文件就会立刻出现并带 v0.3.14，一眼确认新代码是否真的跑起来（不再需要开设置才生成）。
     try {
-      this._logStatus('===== 插件已加载 (onload) v1.4.1 =====');
+      this._logStatus('===== 插件已加载 (onload) v1.4.2 =====');
     } catch (e) { /* 忽略 */ }
 
     this.ribbonIcon = this.addRibbonIcon('globe', '手动触发翻译', () => this.translateOpenModals(true, 5000));
@@ -212,7 +212,7 @@ class LLMSettingsTranslator extends Plugin {
       for (const k in NAME_DICT) { if (Object.prototype.hasOwnProperty.call(NAME_DICT, k)) this._transCache.set(this._ckey(k), NAME_DICT[k]); }
     }
     // 持久化翻译缓存：从 cache.json 载入历史译文，跨会话/重启复用，避免重复消耗 token（最大省 token 项）
-    // 用 vault adapter 跨平台读写（桌面端与移动端均可），替代 require('fs')
+    // 用 vault adapter 跨平台读写（桌面端与移动端均可），替代 Node 文件系统 API
     try {
       const adapter = this.app.vault.adapter;
       const p = this._pluginFilePath('cache.json');
@@ -297,7 +297,7 @@ class LLMSettingsTranslator extends Plugin {
     }, 3000);
   }
 
-  // 跨平台落盘：用 vault adapter 写插件目录下的 cache.json（移动端无 Node fs，必须走 adapter）
+  // 跨平台落盘：用 vault adapter 写插件目录下的 cache.json（移动端无 Node 文件系统，必须走 adapter）
   async _flushCache() {
     try {
       const adapter = this.app.vault.adapter;
@@ -312,7 +312,7 @@ class LLMSettingsTranslator extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
 
-  // 插件目录内文件的跨平台相对路径（桌面端与移动端 adapter 均可用，替代 require('fs')，
+  // 插件目录内文件的跨平台相对路径（桌面端与移动端 adapter 均可用，替代 Node 文件系统 API，
   // 让翻译缓存与诊断文件在移动端也能正常读写）
   _pluginFilePath(file) {
     return '.obsidian/plugins/llm-settings-translator/' + file;
@@ -585,7 +585,7 @@ class LLMSettingsTranslator extends Plugin {
       const adapter = this.app.vault.adapter;
       if (!adapter || typeof adapter.write !== 'function') return;
       const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-      let s = '=== 模型拒翻词记录 (v1.4.1) ' + ts + ' ===\n';
+      let s = '=== 模型拒翻词记录 (v1.4.2) ' + ts + ' ===\n';
       s += '以下词模型坚持返回原样英文（且不在 NAME_DICT），属模型能力边界。\n';
       s += '如需强制翻译，告诉 AI 在 NAME_DICT 加一条即可。\n';
       s += '当前共 ' + this._refused.size + ' 项：\n';

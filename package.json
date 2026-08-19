@@ -1,6 +1,6 @@
 {
   "name": "llm-settings-translator",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "用 OpenAI 兼容 LLM 自动翻译 Obsidian 插件设置弹窗内的英文文本（支持多语言目标）",
   "main": "main.js",
   "scripts": {
