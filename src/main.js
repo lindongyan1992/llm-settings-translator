@@ -1053,7 +1053,7 @@ class SettingsTab extends PluginSettingTab {
         }));
 
     const langSetting = new Setting(containerEl)
-      .setName('目标语言')
+      .setName('目标语言 (Language)')
       .setDesc('默认简体中文。常用语言可直接下拉选择，其它语言需选择「自定义…」后再手动输入语言名。修改后重新打开设置弹窗生效（各语言翻译缓存独立，互不串用）。填了无法识别的语言名时自动按简体中文翻译。');
     // 下拉框与输入框上下分布（Obsidian 默认左右并排，这里把控件区改为纵向排列）；
     // 不设置任何宽度，与 API 端点输入框一样走 Obsidian 默认宽度，保持统一
