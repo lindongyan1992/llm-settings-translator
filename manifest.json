@@ -1,7 +1,7 @@
 {
 	"id": "llm-settings-translator",
 	"name": "LLM Settings Translator",
-	"version": "1.4.5",
+	"version": "1.4.6",
 	"minAppVersion": "1.4.0",
 	"description": "由自定义端点LLM自动翻译设置窗口内的文本.",
 	"author": "lindongyan1992",

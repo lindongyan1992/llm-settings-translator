@@ -486,39 +486,28 @@ class LLMSettingsTranslator extends Plugin {
     return false;
   }
 
-  // 查找设置弹窗根节点（跨 document 探测）：在每个候选 document 里按优先级寻找设置结构
+  // 查找设置弹窗根节点（跨 document 探测）：在每个候选 document 里按设置项数量优先，取最多设置项的根节点
   findSettingRoots() {
     const MARK = '.setting-item, .vertical-tab-content, .vertical-tab-header, .setting-item-name';
     const NOTE = '.cm-editor, .markdown-source-view, .markdown-reading-view, .markdown-preview-view, .graph-view, .canvas-wrapper';
-    // 0) 最可靠：直接拿 app.setting.containerEl（它所属的 document 由 .doc 给出，无需关心在哪个窗口）
-    try {
-      const st = this.app.setting;
-      if (st && st.containerEl && st.containerEl.querySelector &&
-          st.containerEl.querySelector(MARK)) {
-        return [st.containerEl];
-      }
-    } catch (e) { /* 忽略，走下方跨 document 扫描 */ }
-
     const docs = this.collectDocs();
+    let bestRoot = null;
+    let bestCount = -1;
     for (const doc of docs) {
       if (!doc) continue;
-      // 1) 含设置标记的标准 modal（必须含 MARK，避免误抓其它 modal）
-      let root = Array.from(doc.querySelectorAll('.modal'))
+      const count = (doc.querySelectorAll(MARK) || []).length;
+      if (count <= bestCount) continue;
+      bestCount = count;
+      const modalRoot = Array.from(doc.querySelectorAll('.modal'))
         .find((m) => m.querySelector && m.querySelector(MARK));
-      if (root) return [root];
-      // 2) 含设置标记、且内部不含笔记编辑器的 view-content（兼容「设置以工作区视图形式打开」）
-      //    用 querySelector(NOTE) 排除笔记视图：笔记编辑器是 view-content 的【后代】，closest 查不到，必须用后代查询。
-      root = Array.from(doc.querySelectorAll('.view-content'))
+      if (modalRoot) { bestRoot = modalRoot; continue; }
+      const vcRoot = Array.from(doc.querySelectorAll('.view-content'))
         .find((v) => !v.querySelector(NOTE) && v.querySelector(MARK));
-      if (root) return [root];
-      // 3) 兜底：任意含设置标记的节点（无论何种容器），取其最近的 modal/view-content 或父节点
+      if (vcRoot) { bestRoot = vcRoot; continue; }
       const content = doc.querySelector(MARK);
-      if (content) {
-        const r = content.closest('.modal, .view-content') || content.parentElement || content;
-        return [r];
-      }
+      if (content) bestRoot = content.closest('.modal, .view-content') || content.parentElement || content;
     }
-    return [];
+    return bestRoot ? [bestRoot] : [];
   }
 
   // 为设置根节点挂一个持久「守护」：一旦 Obsidian 因重绘 / 切换标签 / 焦点变化
