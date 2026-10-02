@@ -14,3 +14,7 @@ Thumbs.db
 node_modules/
 /main.js
 *.map
+
+# 本地临时备份（AI 改动前的源码快照 / 手机端旧版回滚件），绝不入库
+.backups/
+phone-backup-*/
