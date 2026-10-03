@@ -41,6 +41,6 @@ jobs:
           tag="${GITHUB_REF#refs/tags/}"
           gh release create "$tag" \
             --title="$tag" \
-            --draft \
+            --latest \
             --notes "Release $tag of LLM Settings Translator. Cross-platform settings-modal translator powered by any OpenAI-compatible LLM. See the README for installation and usage." \
             main.js manifest.json
