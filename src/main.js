@@ -293,7 +293,7 @@ class LLMSettingsTranslator extends Plugin {
     // 重载证明：插件一加载就立刻往 diag_status.txt 写版本横幅。只要用户重载/重启成功，
     // 这个文件就会立刻出现并带 v0.3.14，一眼确认新代码是否真的跑起来（不再需要开设置才生成）。
     try {
-      this._logStatus('===== 插件已加载 (onload) v1.4.21 =====');
+      this._logStatus('===== 插件已加载 (onload) v1.4.22 =====');
     } catch (e) { /* 忽略 */ }
 
     this.ribbonIcon = this.addRibbonIcon('globe', '手动触发翻译', () => this.translateOpenModals(true, 5000));
@@ -707,7 +707,10 @@ class LLMSettingsTranslator extends Plugin {
     if (!text) return false;
     const t = typeof text === 'string' ? text : String(text);
     if (t.length > 1200) return true;                    // 极端超长（多为日志/堆栈文本）仍排除
-    if (/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/.test(t)) return true; // 含日期：2026-08-19 等
+    // 仅「整段文本即日期/时间」或「短文本(≤40字符)含日期」才算动态值；
+    // 长设置描述里举例的日期（如 "...e.g. 2021-05-14 ..."）不再被误判为动态值而拒写缓存（v1.4.22 修复）
+    if (/^\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2}([ T]\d{1,2}:\d{2}(:\d{2})?)?$/.test(t)) return true;
+    if (t.length <= 40 && /\b\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2}\b/.test(t)) return true;
     // 含扩展名且无空格（更像文件名/路径，而非设置句）
     if (/\.[a-z0-9]{2,5}\b/i.test(t) && t.indexOf(' ') < 0) return true;
     return false;
